@@ -22,8 +22,8 @@ func (p *PosterParams) CreatePoster() {
 		&posterPkg.Rect{
 			X0: 0,
 			Y0: 0,
-			X1: 550,
-			Y1: 700,
+			X1: 750,
+			Y1: 1334,
 		},
 		&posterPkg.Pt{
 			X: p.QrCodeX,
