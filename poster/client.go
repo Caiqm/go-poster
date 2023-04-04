@@ -36,13 +36,14 @@ func (p *PosterParams) SetText(txt string, x, y, size int) *PosterParams {
 }
 
 // 设置封面
-func (p *PosterParams) SetCover(url string, width, height, x, y int) *PosterParams {
+func (p *PosterParams) SetCover(url string, width, height, x, y, circle int) *PosterParams {
 	var c poster.Cover
 	c.CoverX = x
 	c.CoverY = y
 	c.CoverWidth = width
 	c.CoverHeight = height
 	c.CoverUrl = url
+	c.Circle = circle
 	p.Cover = append(p.Cover, c)
 	return p
 }

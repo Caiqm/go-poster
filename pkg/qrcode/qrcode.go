@@ -1,12 +1,12 @@
 package qrcode
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"github.com/Caiqm/go-poster/pkg/file"
 	"github.com/boombuler/barcode"
 	"github.com/boombuler/barcode/qr"
 	"image/jpeg"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -53,9 +53,7 @@ func GetQrCodeFullPath() string {
 // 获取二维码文件名称
 func GetQrCodeFileName(value string) string {
 	timeStr := strconv.Itoa(int(time.Now().UnixMicro()))
-	m := md5.New()
-	m.Write([]byte(value + timeStr))
-	return hex.EncodeToString(m.Sum(nil))
+	return file.Md5Str(value + timeStr)
 }
 
 // 获取二维码扩展名
@@ -101,4 +99,15 @@ func (q *QrCode) Encode(path string) (string, string, error) {
 	}
 
 	return name, path, nil
+}
+
+// 删除二维码
+func (q *QrCode) RmQrcode(fileName, filePath string) error {
+	dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	qrSrc := filepath.Join(dir, filePath, fileName)
+	err = os.Remove(qrSrc)
+	return err
 }

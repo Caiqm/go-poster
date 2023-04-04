@@ -1,14 +1,13 @@
 package poster
 
 import (
-	"fmt"
 	posterPkg "github.com/Caiqm/go-poster/pkg/poster"
 	"github.com/Caiqm/go-poster/pkg/qrcode"
 	"github.com/boombuler/barcode/qr"
 	"os"
 )
 
-func (p *PosterParams) CreatePoster() {
+func (p *PosterParams) CreatePoster() (string, error) {
 	// 二维码参数
 	qrc := qrcode.NewQrCode(p.QrCodeUrl, p.QrCodeWidth, p.QrCodeHeight, qr.M, qr.Auto)
 	// 海报名称
@@ -19,12 +18,6 @@ func (p *PosterParams) CreatePoster() {
 	posterBg := posterPkg.NewPosterBg(
 		p.BgUrl,
 		poster,
-		&posterPkg.Rect{
-			X0: 0,
-			Y0: 0,
-			X1: 750,
-			Y1: 1334,
-		},
 		&posterPkg.Pt{
 			X: p.QrCodeX,
 			Y: p.QrCodeY,
@@ -38,13 +31,11 @@ func (p *PosterParams) CreatePoster() {
 	)
 	qrCodeName, filePath, err := posterBg.Generate()
 	if err != nil {
-		fmt.Println(err)
-		return
+		return "", err
 	}
-	data := make(map[string]string)
 	// 保存海报路径
-	data["poster_save_url"] = filePath + posterName
+	posterSaveUrl := filePath + posterName
 	// 删除文件
 	_ = os.Remove(filePath + qrCodeName)
-	fmt.Println(data)
+	return posterSaveUrl, nil
 }
