@@ -2,6 +2,7 @@ package poster
 
 import (
 	"errors"
+	"fmt"
 	"github.com/Caiqm/go-poster/pkg/circle"
 	"github.com/Caiqm/go-poster/pkg/file"
 	"github.com/Caiqm/go-poster/pkg/qrcode"
@@ -21,7 +22,8 @@ type Poster struct {
 }
 
 type PosterBg struct {
-	Name string
+	Name             string
+	CustomQrCodePath string
 	*Poster
 	*Rect
 	*Pt
@@ -73,21 +75,21 @@ type Cover struct {
 }
 
 // 初始化海报参数
-func NewPoster(posterName string, qr *qrcode.QrCode) *Poster {
+func NewPoster(posterName string) *Poster {
 	return &Poster{
 		PosterName: posterName,
-		Qr:         qr,
 	}
 }
 
 // 初始化生成海报参数
-func NewPosterBg(name string, ap *Poster, pt *Pt, drawText *DrawText, drawCover *DrawCover) *PosterBg {
+func NewPosterBg(name, cusQrPath string, ap *Poster, pt *Pt, drawText *DrawText, drawCover *DrawCover) *PosterBg {
 	return &PosterBg{
-		Name:      name,
-		Poster:    ap,
-		Pt:        pt,
-		DrawText:  drawText,
-		DrawCover: drawCover,
+		Name:             name,
+		CustomQrCodePath: cusQrPath,
+		Poster:           ap,
+		Pt:               pt,
+		DrawText:         drawText,
+		DrawCover:        drawCover,
 	}
 }
 
@@ -96,12 +98,17 @@ func GetPosterFlag() string {
 	return "poster"
 }
 
+// 设置二维码参数
+func (a *Poster) SetQrParam(qr *qrcode.QrCode) *Poster {
+	a.Qr = qr
+	return a
+}
+
 // 检查合并后图像（指的是存放合并后的海报）是否存在
 func (a *Poster) CheckMergedImage(path string) bool {
 	if file.CheckNotExist(path+a.PosterName) == true {
 		return false
 	}
-
 	return true
 }
 
@@ -111,7 +118,6 @@ func (a *Poster) OpenMergedImage(path string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return f, nil
 }
 
@@ -130,16 +136,23 @@ func (a *Poster) GetRealFilePath(filePath string) (string, error) {
 
 // 生成海报主方法
 func (a *PosterBg) Generate() (string, string, error) {
+	// 获取背景图本地地址
 	filePath, err := a.GetRealFilePath(a.Name)
 	if err != nil {
 		return "", "", err
 	}
-	// 获取二维码存储路径
-	fullPath := qrcode.GetQrCodeFullPath()
+	var path, fileName string
 	// 生成二维码图像
-	fileName, path, err := a.Qr.Encode(fullPath)
-	if err != nil {
-		return "", "", err
+	if a.CustomQrCodePath != "" {
+		path = filepath.Dir(a.CustomQrCodePath)
+		fileName = filepath.Base(a.CustomQrCodePath)
+	} else {
+		// 获取二维码存储路径
+		fullPath := qrcode.GetQrCodeFullPath()
+		fileName, path, err = a.Qr.Encode(fullPath)
+		if err != nil {
+			return "", "", err
+		}
 	}
 	// 检查合并后图像（指的是存放合并后的海报）是否存在
 	if !a.CheckMergedImage(path) {
@@ -205,7 +218,21 @@ func (a *PosterBg) DrawPosterCover(dp *DrawCover) error {
 	if len(dp.CoverMap) <= 0 {
 		return nil
 	}
-	var err error
+	var (
+		err       error
+		coverPath []string
+	)
+	// 删除文件
+	defer func() {
+		if len(coverPath) > 0 {
+			for _, fp := range coverPath {
+				err = file.RemoveFile(fp)
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+		}
+	}()
 	for _, v := range dp.CoverMap {
 		filePath := v.CoverUrl
 		// 网络链接
@@ -226,6 +253,8 @@ func (a *PosterBg) DrawPosterCover(dp *DrawCover) error {
 		if file.CheckNotExist(filePath) {
 			return errors.New("file path not exist")
 		}
+		// 文件路径加入切片
+		coverPath = append(coverPath, filePath)
 		// 生成缩略图
 		if v.CoverWidth > 0 {
 			orgFilePath = filePath
@@ -256,11 +285,6 @@ func (a *PosterBg) DrawPosterCover(dp *DrawCover) error {
 		}
 		// 在 RGBA 图像上绘制 背景图（bgF）
 		draw.Draw(dp.JPG, dp.JPG.Bounds(), coverImage, coverImage.Bounds().Min.Sub(image.Pt(v.CoverX, v.CoverY)), draw.Over)
-		// 删除文件
-		err = file.RemoveFile(filePath)
-		if err != nil {
-			return err
-		}
 		// 删除原文件
 		_ = RemoveOrgFile(orgFilePath)
 		_ = RemoveOrgFile(orgThumbPath)
